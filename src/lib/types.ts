@@ -6,6 +6,8 @@ export type ManualSection = {
 };
 
 export type RetrievedSource = ManualSection & { score: number };
+export type ChatHistoryMessage = { role: "user" | "assistant"; content: string };
+
 export type AnswerStatus = "supported" | "partial" | "not_in_manual";
 
 export type RetrievalInfo = {
@@ -21,6 +23,7 @@ export type RetrievalInfo = {
 export type ChatResponse = {
   mode: "answer";
   retrieval: RetrievalInfo;
+  retrievalQuestion: string;
   answer: string;
   sources: RetrievedSource[];
   model: string;

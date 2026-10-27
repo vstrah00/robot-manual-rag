@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "index:manual": "node --import tsx scripts/index-manual.ts",
     "test": "node --import tsx --test tests/*.test.ts",
-    "eval": "node --import tsx scripts/evaluate.ts"
+    "eval": "node --import tsx scripts/evaluate.ts",
+    "eval:conversation": "node --import tsx scripts/evaluate-conversation.ts"
   },
   "dependencies": {
     "@next/env": "16.4.2",

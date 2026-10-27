@@ -55,11 +55,17 @@ end
 
 == 1. Ask a question ==
 user -> frontend : Type a question and press Send
-frontend -> backend : POST /api/chat\n{ question }
+frontend -> backend : POST /api/chat\n{ question, recent completed history }
 activate backend
 backend -> backend : Validate input\nRead current manual fingerprint
 backend -> index : Load index and validate\nmanual hash + embedding model
 index --> backend : Chunk text, IDs and stored vectors
+
+opt Recent history is present (up to three exchanges)
+  backend -> llm : Current question + untrusted history\nResolve references; do not answer
+  llm --> backend : Standalone retrieval question
+  backend -> backend : Validate rewritten question length
+end
 
 == 2. Find relevant manual sections ==
 backend -> embedding : Embed the question

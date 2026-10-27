@@ -5,10 +5,15 @@ import { selectContext } from "./context-selection";
 import { rankChunks } from "./similarity";
 import { readVectorIndex } from "./vector-store";
 
-export async function retrieveChunks(question: string, signal?: AbortSignal) {
+export async function loadRetrievalIndex() {
   const document = await readManualDocument();
   // Check the index BEFORE making a paid query-embedding request.
   const index = await readVectorIndex(document.sourceHash, embeddingModel());
+  return index;
+}
+
+export async function retrieveChunks(question: string, signal?: AbortSignal, preparedIndex?: Awaited<ReturnType<typeof loadRetrievalIndex>>) {
+  const index = preparedIndex ?? await loadRetrievalIndex();
   const { vectors } = await embedTexts([question], signal);
   return {
     ...selectContext(question, rankChunks(vectors[0], index.chunks, index.chunks.length)),

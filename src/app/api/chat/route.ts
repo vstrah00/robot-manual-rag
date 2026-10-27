@@ -1,4 +1,6 @@
-import { retrieveChunks } from "@/lib/retrieval";
+import { parseHistory } from "@/lib/conversation";
+import { resolveQuestion } from "@/lib/resolve-question";
+import { loadRetrievalIndex, retrieveChunks } from "@/lib/retrieval";
 import { publicError } from "@/lib/errors";
 import { generateAnswer } from "@/lib/generation";
 import { MAX_QUESTION_LENGTH, type ChatResponse } from "@/lib/types";
@@ -37,9 +39,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await retrieveChunks(question.trim(), request.signal);
+    const history = parseHistory(body && typeof body === "object" && "history" in body ? body.history : undefined);
+    const index = await loadRetrievalIndex();
+    const retrievalQuestion = await resolveQuestion(question.trim(), history, request.signal);
+    const result = await retrieveChunks(retrievalQuestion, request.signal, index);
     const generated = await generateAnswer(
-      question.trim(),
+      retrievalQuestion,
       result.sources,
       request.signal,
       result.retrieval,
@@ -47,6 +52,7 @@ export async function POST(request: Request) {
 
     const response: ChatResponse = {
       mode: "answer",
+      retrievalQuestion,
       retrieval: result.retrieval,
       answer: generated.answer,
       sources: result.sources,

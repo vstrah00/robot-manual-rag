@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { recentHistory } from "@/lib/conversation";
 import {
   MAX_QUESTION_LENGTH,
   type ChatResponse,
@@ -143,9 +144,13 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify({ question: trimmed, history: recentHistory(messages) }),
         signal: AbortSignal.timeout(50_000),
       });
+      if (response.status === 429)
+        throw new Error("Too many questions. Please wait a minute before trying again.");
+      if (!response.headers.get("content-type")?.includes("application/json"))
+        throw new Error("The server could not process this question. Please try again shortly.");
       const data = await response.json();
       if (!response.ok)
         throw new Error(

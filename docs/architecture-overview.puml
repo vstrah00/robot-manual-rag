@@ -25,15 +25,15 @@ node "Web browser\nDesktop or phone" as browser {
   component "<size:26><&browser></size>\nFrontend\nReact + TypeScript\n\nEnter questions\nRead generated answers\nExpand manual and sources" as frontend
 }
 node "Next.js server\nNode.js backend" as server {
-  component "<size:26><&cog></size>\nChat API - POST /api/chat\n\n1. Validate question and index\n2. Embed the question\n3. Retrieve context within budget\n4. Request a grounded answer\n5. Validate status and citations" as backend
+  component "<size:26><&cog></size>\nChat API - POST /api/chat\n\n1. Validate question and index\n2. Resolve follow-ups, then embed\n3. Retrieve context within budget\n4. Request a grounded answer\n5. Validate status and citations" as backend
 }
 cloud "OpenAI API\nExternal services" as openai {
   component "<size:26><&grid-two-up></size>\nEmbedding model\ntext-embedding-3-small\n\nConvert text to vectors" as embedding
-  component "<size:26><&lightbulb></size>\nLanguage model\ngpt-6-luna\n\nAnswer from supplied context" as llm
+  component "<size:26><&lightbulb></size>\nLanguage model\ngpt-6-luna\n\nResolve follow-ups; answer from context" as llm
 }
 
 user -right-> frontend : Ask questions\nRead answers
-frontend <-right-> backend : HTTP POST /api/chat\nQuestion / answer + sources
+frontend <-right-> backend : HTTP POST /api/chat\nQuestion + bounded history / answer + sources
 backend <-right-> embedding : Question / query vector
 backend <-right-> llm : Question + retrieved context /\nstructured answer
 
