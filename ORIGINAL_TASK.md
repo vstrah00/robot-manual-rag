@@ -1,9 +1,5 @@
 # Original technical test assignment
 
-Hi Vito,
-
-As agreed during our call, I'm sending you the technical test assignment. Once you've completed it, simply send me the results and/or the source code by replying to this email, and we'll discuss the next steps.
-
 **Assignment:**
 
 Imagine we have an educational robot that helps students learn robotics. The robot has a manual containing basic information about sensors, motors, batteries, safety, and programming. A user asks a question through a web application, and the system should answer based on the content of this manual.
@@ -38,7 +34,3 @@ The generated answer should be displayed in the web interface. It is also desira
 - You are welcome to use AI-assisted development tools such as **OpenAI Codex**, **Claude Code**, or similar coding assistants during development.
 - Along with the source code, please include a short explanation of your solution and a simple architecture diagram illustrating how the application is structured.
 - Briefly describe the purpose of each major component (e.g., frontend, backend, document processing, embeddings, vector database, retrieval, LLM, etc.) and explain how they work together to produce the final answer.
-
-Best regards,
-
-Daniel
