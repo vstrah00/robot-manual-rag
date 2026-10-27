@@ -65,7 +65,7 @@ test("unsupported responses use a fixed abstention without outside facts", () =>
   );
   assert.equal(
     result.answer,
-    "The manual does not provide the information needed to answer that question.",
+    "The retrieved excerpts do not provide enough information to answer that question.",
   );
   assert.equal(result.status, "not_in_manual");
   assert.deepEqual(result.sourceIds, []);

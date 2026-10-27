@@ -249,7 +249,7 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
             A little robot.
             <br />A lot to discover.
           </strong>
-          <p>10 sections on sensors, movement, power, and safe exploration.</p>
+          <p>{sections.length} sections on sensors, movement, power, and safe exploration.</p>
           <span className="document-foot">
             Fictional manual · Learning project
           </span>
@@ -348,7 +348,7 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
                         {message.role === "assistant" && (
                           <span className="setup-label">
                             {message.status === "not_in_manual"
-                              ? "NOT IN THE MANUAL"
+                              ? "NOT IN THESE EXCERPTS"
                               : message.status === "partial"
                                 ? "PARTIAL ANSWER"
                                 : "MANUAL ANSWER"}
@@ -390,8 +390,8 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
                           <p className="similarity-note">
                             Higher scores mean closer embedding similarity, not
                             confidence that the text answers the question.
-                            Search returns the closest sections even when the
-                            manual has no answer.
+                            Retrieval selects candidate sections; their inclusion
+                            does not guarantee they answer the question.
                           </p>
                           <span className="embedding-model">
                             Answer: {message.model} · Embeddings:{" "}

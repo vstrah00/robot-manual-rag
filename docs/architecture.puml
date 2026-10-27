@@ -66,7 +66,7 @@ backend -> embedding : Embed the question
 activate embedding
 embedding --> backend : Question vector
 deactivate embedding
-backend -> backend : Compare vectors with cosine similarity\nSelect the top 3 chunks
+backend -> backend : Compare vectors with cosine similarity\nFocused: top 3; multi-topic: cover headings\nOverview: all sections within budget
 
 == 3. Generate a grounded answer ==
 backend -> llm : Instructions + question\n+ retrieved excerpts

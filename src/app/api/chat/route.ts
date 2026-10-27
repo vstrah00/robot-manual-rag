@@ -42,10 +42,12 @@ export async function POST(request: Request) {
       question.trim(),
       result.sources,
       request.signal,
+      result.retrieval,
     );
 
     const response: ChatResponse = {
       mode: "answer",
+      retrieval: result.retrieval,
       answer: generated.answer,
       sources: result.sources,
       model: generated.model,

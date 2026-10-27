@@ -2,7 +2,7 @@ import "server-only";
 import { ANSWER_INSTRUCTIONS, answerInput, validateAnswer } from "./answer";
 import { AppError } from "./errors";
 import { createOpenAIClient, openAIError } from "./openai";
-import type { RetrievedSource } from "./types";
+import type { RetrievedSource, RetrievalInfo } from "./types";
 
 export function answerModel() {
   return process.env.OPENAI_CHAT_MODEL?.trim() || "gpt-6-luna";
@@ -12,6 +12,7 @@ export async function generateAnswer(
   question: string,
   sources: RetrievedSource[],
   signal?: AbortSignal,
+  retrieval?: RetrievalInfo,
 ) {
   if (!sources.length)
     throw new AppError(
@@ -25,10 +26,10 @@ export async function generateAnswer(
       {
         model,
         instructions: ANSWER_INSTRUCTIONS,
-        input: answerInput(question, sources),
+        input: answerInput(question, sources, retrieval),
         store: false,
         reasoning: { effort: "none" },
-        max_output_tokens: 700,
+        max_output_tokens: sources.length > 6 ? 1100 : 700,
         text: {
           format: {
             type: "json_schema",

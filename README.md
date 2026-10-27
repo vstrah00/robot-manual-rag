@@ -56,7 +56,7 @@ Step 0 prepares the manual. Steps 1–4 follow one question from submission to i
 | Document processing | `src/lib/document.ts` parses numbered Markdown sections and calculates a source-file hash. |
 | Embeddings | OpenAI `text-embedding-3-small` converts manual chunks and questions into comparable vectors. |
 | Vector storage | Local `data/index.json` stores chunk text, IDs, vectors, model information, and the manual hash. No dedicated vector database is needed for ten chunks. |
-| Retrieval | `src/lib/similarity.ts` calculates cosine similarity; `src/lib/retrieval.ts` selects the three highest-scoring chunks. |
+| Retrieval | `src/lib/similarity.ts` calculates cosine similarity; `src/lib/retrieval.ts` selects context with embedding ranking, explicit topic coverage, and a character budget. |
 | LLM and validation | `src/lib/generation.ts` calls OpenAI Responses; `src/lib/answer.ts` assembles context-only instructions and validates answer status and cited source IDs. |
 
 Also included: a [component overview](docs/architecture-overview.png) and a [detailed indexing sequence](docs/indexing-flow.png). All diagrams have editable PlantUML sources in `docs/`. Paste [architecture.puml](docs/architecture.puml) into [PlantText](https://www.planttext.com/) and select **Save & Refresh** to edit the main diagram; `docs/planttext-link.txt` contains a preloaded editor link.
@@ -65,9 +65,9 @@ Also included: a [component overview](docs/architecture-overview.png) and a [det
 
 **Indexing:** `scripts/index-manual.ts` reads the ten-section manual, sends section titles and text in one embedding batch, and writes the resulting index atomically. One complete, self-contained paragraph forms one chunk, so this document does not need overlap. An unchanged manual and embedding model reuse the existing index without another API call.
 
-**Answering:** the backend embeds the question, ranks all stored vectors by cosine similarity, and sends the question plus the top three excerpts to the LLM. The model returns structured JSON containing an answer, a support status, and cited source IDs. The backend checks that citations belong to the retrieved set and rejects malformed output.
+**Answering:** the backend embeds the question, ranks all stored vectors by cosine similarity, and selects context using `src/lib/context-selection.ts`. Focused questions keep the top three embedding matches. Questions naming multiple supported topics also include matching titled sections, so one highly ranked topic cannot displace the others. Whole-manual summaries include all ten sections in document order when they fit. Selected complete paragraphs are bounded by a 16,000-character serialized-excerpt budget (not an exact token count). The question and selected excerpts are then sent to the LLM. The model returns structured JSON containing an answer, a support status, and cited source IDs. The backend checks that citations belong to the retrieved set and rejects malformed output.
 
-Supported and partial answers require at least one citation. Unsupported answers use a fixed message stating that the manual does not provide the information. Retrieved candidates are displayed separately from the sources cited in the answer. Similarity scores measure embedding closeness, not confidence or proof that a passage answers the question.
+Supported and partial answers require at least one citation. Unsupported answers use a fixed message stating that the retrieved excerpts do not provide enough information. An absent retrieved section is not proof of absence from the document; partial answers must describe gaps in the excerpts. The legacy API status `not_in_manual` means unsupported by supplied context, and the UI labels it “Not in these excerpts”. Retrieved candidates are displayed separately from the sources cited in the answer. Similarity scores measure embedding closeness, not confidence or proof that a passage answers the question.
 
 The pipeline uses direct SDK calls and ordinary functions, without LangChain. For this ten-paragraph document, a JSON index and exact cosine search keep retrieval easy to inspect. Each question is independent; previous messages are not sent to the model.
 
@@ -81,6 +81,8 @@ Requests reject an index whose manual hash or embedding model no longer matches;
 
 Changing `OPENAI_CHAT_MODEL` does not require re-embedding. The chosen answer model must support the Responses API, strict structured output, and `reasoning.effort: none`; repeat evaluation after changing it. Changing `OPENAI_EMBEDDING_MODEL` requires a new index.
 
+See [retrieval improvements and regression results](docs/retrieval-improvements.md) for the coverage changes made against the unchanged ten-section manual.
+
 ## Validation
 
 ```sh
@@ -89,7 +91,7 @@ npm run typecheck
 npm run build
 ```
 
-The 13 offline tests check chunk preservation, invalid vectors, cosine ranking, stale/corrupt indexes, context assembly, answer/citation validation, and safe errors. They do not use an API key or call OpenAI.
+The 19 offline tests check chunk preservation, invalid vectors, cosine ranking, stale/corrupt indexes, context assembly, answer/citation validation, and safe errors. They do not use an API key or call OpenAI.
 
 For live evaluation, run the indexed app at http://127.0.0.1:3000, then:
 
@@ -97,7 +99,7 @@ For live evaluation, run the indexed app at http://127.0.0.1:3000, then:
 npm run eval
 ```
 
-This makes eight question-embedding calls and eight answer-generation calls, and writes `answer-evaluation.md`. The recorded [live evaluation](answer-evaluation.md) passed all eight status/citation checks; answers were also inspected against their excerpts. Cases include the four assignment questions, an unspecified battery capacity, a partially answerable sensor question, an unrelated question, and an instruction to invent a specification. Earlier [retrieval checks](retrieval-check.md) cover paraphrases and expected source ranking. These are bounded examples, not exhaustive guarantees.
+This makes twelve question-embedding calls and twelve answer-generation calls, and writes `answer-evaluation.md`. The recorded [live evaluation](answer-evaluation.md) includes the four assignment questions, unsupported facts, partial questions, broad summaries, multi-topic coverage, incorrect premises, paraphrases, and an instruction to invent a specification. Cases specify required fact signals and forbidden claim patterns alongside status and citations. These paraphrase-tolerant patterns are heuristic; manually review the recorded answers against their context. Earlier [retrieval checks](retrieval-check.md) cover paraphrases and expected source ranking. These are bounded examples, not exhaustive guarantees.
 
 To check a production build while a development server uses `.next`, run `NEXT_DIST_DIR=.next-check npm run build` on macOS/Linux.
 
@@ -109,12 +111,12 @@ The [fresh source archive verification](docs/submission-check.md) records instal
 
 Invalid JSON, blank/wrong-type questions, or questions longer than 400 characters return HTTP 400. Missing/corrupt indexes return 503; outdated indexes return 409. These checks happen before paid model calls. Provider failures receive safe messages rather than raw SDK errors.
 
-A normal successful question uses one embedding request and one generation request. SDK retries are disabled. Generation is capped at 700 output tokens and uses `store: false`; this setting does not override the provider's general data retention policy.
+A normal successful question uses one embedding request and one generation request. SDK retries are disabled. Generation is capped at 700 output tokens for small contexts and 1,100 for contexts with more than six excerpts and uses `store: false`; this setting does not override the provider's general data retention policy.
 
 ## Scope and limitations
 
 - This is a single-document technical-test prototype. Accounts, multi-user quotas, document uploads, persistent chat history, and hosting are outside the requested scope.
-- Retrieval always selects up to three candidates. No relevance cutoff has been calibrated, so even unrelated questions retrieve passages; the answer model must acknowledge missing information.
+- Retrieval uses English topic patterns plus vector ranking. Whole-manual intent detection and topic matching are explicit heuristics, not a general query planner. The 16,000-character budget keeps whole excerpts; larger manuals can have incomplete coverage, which is passed to the answer model. No relevance cutoff has been calibrated, so unrelated questions can still retrieve candidates.
 - Context-only instructions and valid citations reduce errors but do not prove factual grounding or eliminate hallucination and prompt-injection risk.
 - Chat history exists only in browser memory and clears on refresh. Follow-up questions must stand on their own.
 - Larger document collections may need different chunking, a vector database, and broader evaluation. On read-only hosting, generate the index before deployment.

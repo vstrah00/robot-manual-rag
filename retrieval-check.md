@@ -1,3 +1,5 @@
+> Historical baseline from the original ten-section manual and fixed top-three retrieval. See answer-evaluation.md for the current coverage checks on the same ten-section manual.
+
 # Live retrieval check
 
 Model: text-embedding-3-small. Manual: 10 chunks, 1536 dimensions.
