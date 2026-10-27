@@ -63,13 +63,29 @@ Also included: a [component overview](docs/architecture-overview.png) and a [det
 
 ## How the RAG pipeline works
 
-**Indexing:** `scripts/index-manual.ts` reads the ten-section manual, sends section titles and text in one embedding batch, and writes the resulting index atomically. One complete, self-contained paragraph forms one chunk, so this document does not need overlap. An unchanged manual and embedding model reuse the existing index without another API call.
+A question like **“What makes the robot turn?”** follows three steps:
 
-**Answering:** the backend embeds the question, ranks all stored vectors by cosine similarity, and selects context using `src/lib/context-selection.ts`. Focused questions keep the top three embedding matches. Questions naming multiple supported topics also include matching titled sections, so one highly ranked topic cannot displace the others. Whole-manual summaries include all ten sections in document order when they fit. Selected complete paragraphs are bounded by a 16,000-character serialized-excerpt budget (not an exact token count). The question and selected excerpts are then sent to the LLM. The model returns structured JSON containing an answer, a support status, and cited source IDs. The backend checks that citations belong to the retrieved set and rejects malformed output.
+1. **Prepare the manual.** Before the chat is used, each of the ten titled paragraphs becomes a chunk. OpenAI generates an embedding—a numerical representation of its meaning—for each chunk. Text, vectors, and source IDs are saved in a local JSON index. If the manual and embedding model haven't changed, the existing index is reused.
 
-Supported and partial answers require at least one citation. Unsupported answers use a fixed message stating that the retrieved excerpts do not provide enough information. An absent retrieved section is not proof of absence from the document; partial answers must describe gaps in the excerpts. The legacy API status `not_in_manual` means unsupported by supplied context, and the UI labels it “Not in these excerpts”. Retrieved candidates are displayed separately from the sources cited in the answer. Similarity scores measure embedding closeness, not confidence or proof that a passage answers the question.
+2. **Find the useful passages.** The backend embeds the question and compares it with the stored vectors using cosine similarity. For this example, the passage about motors and wheel speeds should rank highly. Focused questions retrieve the top three matches; questions covering several topics also include matching sections. A whole-manual summary can use all ten paragraphs.
 
-The pipeline uses direct SDK calls and ordinary functions, without LangChain. For this ten-paragraph document, a JSON index and exact cosine search keep retrieval easy to inspect. For follow-ups, the browser sends up to three completed exchanges (six messages, at most 12,000 characters). `src/lib/resolve-question.ts` uses the language model to rewrite the current question into a standalone retrieval question. History is untrusted reference data, used only to resolve references and requested style. The final answer model receives the resolved question and newly retrieved excerpts, without the previous conversation as evidence. New chat or a page refresh clears the history.
+3. **Answer from those passages.** The LLM receives the question and selected excerpts, with instructions to use only that context. The backend validates the response and its source IDs, then the interface displays the answer with expandable excerpts. If the context answers only part of the question, the response explains the gap; if it cannot answer, the assistant says so.
+
+**Follow-ups work too.** After discussing the ultrasonic sensor, “Explain that more simply” is rewritten into a standalone question about that sensor before retrieval. Up to three recent exchanges help resolve the reference. The answer still uses freshly retrieved manual excerpts as its factual source. New chat or a refresh clears the conversation.
+
+**Two distinctions matter:** a high similarity score means a passage is semantically close, not that it answers the question. And missing information in the retrieved excerpts does not prove it is missing from the entire manual.
+
+<details>
+<summary>Implementation details</summary>
+
+- `scripts/index-manual.ts` embeds section titles and paragraph text in one batch and writes the index atomically. Each paragraph is self-contained, so chunks do not overlap.
+- `src/lib/context-selection.ts` combines vector ranking with explicit topic matching. It keeps whole paragraphs within a 16,000-character serialized-excerpt budget, rather than an exact token budget.
+- The LLM returns structured JSON with an answer, support status, and cited source IDs. Supported and partial answers require citations from the retrieved set; malformed output is rejected. Unsupported answers use a fixed abstention message.
+- The API's legacy `not_in_manual` status means unsupported by the supplied context; the interface labels it “Not in these excerpts”. Retrieved candidates and sources actually cited in the answer are marked separately.
+- `src/lib/resolve-question.ts` handles follow-ups using at most six history messages and 12,000 characters. History is untrusted reference data and is not passed to the final answer model as evidence.
+- The pipeline uses the OpenAI SDK and ordinary TypeScript functions. With ten chunks, a JSON index and exact cosine search make the retrieval process straightforward to inspect without LangChain or a separate vector database.
+
+</details>
 
 ## Update the manual or models
 
