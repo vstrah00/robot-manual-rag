@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from "react";
+import { ThemeToggle } from "./theme-toggle";
 import { recentHistory } from "@/lib/conversation";
 import {
   MAX_QUESTION_LENGTH,
@@ -267,10 +268,13 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
             Workspace <span className="breadcrumb-divider">/</span>{" "}
             <strong>Manual chat</strong>
           </span>
-          <span className="status">
-            <span />
-            Answers from the manual
-          </span>
+          <div className="topbar-actions">
+            <span className="status">
+              <span />
+              Answers from the manual
+            </span>
+            <ThemeToggle />
+          </div>
         </header>
         <div className="chat-workspace">
           <div className="chat-topline">

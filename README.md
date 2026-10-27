@@ -2,7 +2,7 @@
 
 A small RAG application that answers questions using a fictional educational robot manual. Built for the [original technical assignment](ORIGINAL_TASK.md) with Next.js, TypeScript, Tailwind CSS, and the OpenAI SDK.
 
-The interface displays generated answers and expandable manual excerpts, marks cited sources, and distinguishes supported, partial, and unsupported answers. It includes a browsable manual, example questions, loading/error states, and a 400-character question limit. The layout supports desktop and phone screens.
+The interface displays generated answers and expandable manual excerpts, marks cited sources, and distinguishes supported, partial, and unsupported answers. It includes a browsable manual, example questions, loading/error states, and a 400-character question limit. The layout supports desktop and phone screens. A light/dark switch follows the browser preference initially and remembers a manual choice on that browser.
 
 ## Run locally
 
