@@ -1,0 +1,64 @@
+@startuml
+title Classroom Rover - full application architecture
+skinparam backgroundColor #FAFBF7
+skinparam shadowing false
+skinparam roundcorner 14
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+skinparam nodesep 45
+skinparam ranksep 65
+skinparam padding 14
+skinparam ArrowColor #526B55
+skinparam componentStyle rectangle
+skinparam componentBackgroundColor #F0F2E9
+skinparam componentBorderColor #8DA17E
+skinparam nodeBackgroundColor #FFFFFF
+skinparam nodeBorderColor #8DA17E
+skinparam cloudBackgroundColor #EEF2FB
+skinparam cloudBorderColor #879CB8
+skinparam databaseBackgroundColor #E0E9D5
+skinparam artifactBackgroundColor #FFF3DD
+skinparam fileBackgroundColor #FFF3DD
+
+actor "Student / user" as user
+node "Web browser\nDesktop or phone" as browser {
+  component "<size:26><&browser></size>\nFrontend\nReact + TypeScript\n\nEnter questions\nRead generated answers\nExpand manual and sources" as frontend
+}
+node "Next.js server\nNode.js backend" as server {
+  component "<size:26><&cog></size>\nChat API - POST /api/chat\n\n1. Validate question and index\n2. Embed the question\n3. Retrieve top 3 chunks\n4. Request a grounded answer\n5. Validate status and citations" as backend
+}
+cloud "OpenAI API\nExternal services" as openai {
+  component "<size:26><&grid-two-up></size>\nEmbedding model\ntext-embedding-3-small\n\nConvert text to vectors" as embedding
+  component "<size:26><&lightbulb></size>\nLanguage model\ngpt-6-luna\n\nAnswer from supplied context" as llm
+}
+
+user -right-> frontend : Ask questions\nRead answers
+frontend <-right-> backend : HTTP POST /api/chat\nQuestion / answer + sources
+backend <-right-> embedding : Question / query vector
+backend <-right-> llm : Question + retrieved context /\nstructured answer
+
+folder "Local project data" as storage {
+  file "<size:24><&document></size>\nRobot manual\ndata/manual.md\n\n10 titled paragraphs" as manual
+  database "Vector index\ndata/index.json\n\nChunk text and source IDs\nVectors and manual hash" as index
+}
+actor "Developer / maintainer" as developer
+artifact "<size:26><&terminal></size>\nIndexing script\nscripts/index-manual.ts\n\nRead and split manual\nEmbed each titled section\nSave complete vector index" as indexing
+
+developer -right-> manual : Edit manual
+manual -right-> indexing : Read sections
+indexing -right-> index : Save chunks + vectors
+index -up-> backend : Read stored vectors and text\nCosine similarity selects top 3
+indexing ..> embedding : Embed chunks when indexing\nReceive chunk vectors
+manual ..> server : Read manual for display\nand verify index fingerprint
+
+note bottom of indexing
+  Run: npm run index:manual
+  Rebuild after manual updates.
+  Indexing is separate from chat requests.
+end note
+note bottom of server
+  <&lock-locked> API key stays on the server.
+  Browser requests go through the backend.
+  Missing information is acknowledged.
+end note
+@enduml

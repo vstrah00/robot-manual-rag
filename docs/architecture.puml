@@ -1,0 +1,87 @@
+@startuml
+title Classroom Rover - complete RAG flow\nRead from top to bottom: time flows downward
+skinparam backgroundColor #FAFBF7
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+<style>
+participant {
+  Padding 26
+}
+</style>
+skinparam BoxPadding 18
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 190
+skinparam sequence {
+  ArrowColor #526B55
+  LifeLineBorderColor #B3BEAC
+  ParticipantBackgroundColor #F0F2E9
+  ParticipantBorderColor #8DA17E
+  ActorBorderColor #526B55
+  GroupBackgroundColor #FFFFFF
+  GroupBorderColor #C5D0BB
+  DividerBackgroundColor #E7EDDE
+  DividerBorderColor #B4C4A4
+}
+hide footbox
+actor "Student / user" as user
+participant "<size:22><&browser></size>\nBrowser frontend\nReact chat" as frontend
+box "Server-side code and local data" #F1F5EB
+  participant "<size:22><&cog></size>\nBackend\nPOST /api/chat" as backend
+  participant "<size:22><&terminal></size>\nIndexing script\nindex-manual.ts" as indexing
+  database "Local vector index\nindex.json" as index
+end box
+box "OpenAI API" #EEF2FB
+  participant "<size:22><&grid-two-up></size>\nEmbedding model\ntext-embedding-3-small" as embedding
+  participant "<size:22><&lightbulb></size>\nLanguage model\ngpt-6-luna" as llm
+end box
+
+== 0. Prepare the manual - before using the chat ==
+note over indexing,index
+  Run npm run index:manual initially and after manual changes.
+  This preparation is separate from each question.
+end note
+opt Index is missing or the manual / embedding model changed
+  activate indexing
+  indexing -> indexing : Read data/manual.md\nSplit into titled chunks and hash document
+  indexing -> embedding : Send section titles + paragraph text\nRequest an embedding for each chunk
+  activate embedding
+  embedding --> indexing : One numerical vector per chunk
+  deactivate embedding
+  indexing -> index : Save text, source IDs, vectors,\nmodel and manual hash in index.json
+  deactivate indexing
+end
+
+== 1. Ask a question ==
+user -> frontend : Type a question and press Send
+frontend -> backend : POST /api/chat\n{ question }
+activate backend
+backend -> backend : Validate input\nRead current manual fingerprint
+backend -> index : Load index and validate\nmanual hash + embedding model
+index --> backend : Chunk text, IDs and stored vectors
+
+== 2. Find relevant manual sections ==
+backend -> embedding : Embed the question
+activate embedding
+embedding --> backend : Question vector
+deactivate embedding
+backend -> backend : Compare vectors with cosine similarity\nSelect the top 3 chunks
+
+== 3. Generate a grounded answer ==
+backend -> llm : Instructions + question\n+ retrieved excerpts
+activate llm
+llm --> backend : Structured answer\nSupport status + cited source IDs
+deactivate llm
+backend -> backend : Validate output and source IDs\nUse fixed abstention if unsupported
+
+== 4. Show the result ==
+backend --> frontend : JSON: answer, status, sources\nand cited source IDs
+deactivate backend
+frontend --> user : Display answer and expandable sources
+
+note over frontend,backend
+  The browser communicates with our backend.
+  The API key and OpenAI calls stay on the server.
+end note
+@enduml

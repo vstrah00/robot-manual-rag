@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.next-check/
+out/
+*.tsbuildinfo
+.env*
+!.env.example
+.DS_Store
+data/index.json
+data/index.json.*.tmp

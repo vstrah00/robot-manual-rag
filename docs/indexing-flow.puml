@@ -1,0 +1,51 @@
+@startuml
+title Classroom Rover - preparing the manual\nRun before chat, and again after manual updates
+skinparam backgroundColor #FAFBF7
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 15
+<style>
+participant {
+  Padding 24
+}
+</style>
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 190
+skinparam sequence {
+  ArrowColor #526B55
+  LifeLineBorderColor #B3BEAC
+  ParticipantBackgroundColor #F0F2E9
+  ParticipantBorderColor #8DA17E
+  DividerBackgroundColor #E7EDDE
+  DividerBorderColor #B4C4A4
+}
+hide footbox
+actor "Developer / maintainer" as developer
+participant "<size:22><&document></size>\nManual\ndata/manual.md" as manual
+participant "<size:22><&terminal></size>\nIndexing script\nindex-manual.ts" as indexing
+participant "<size:22><&cloud></size>\nOpenAI embeddings\ntext-embedding-3-small" as embedding
+database "Local vector index\ndata/index.json" as index
+
+== 1. Update the document ==
+developer -> manual : Create or edit manual sections
+developer -> indexing : npm run index:manual
+activate indexing
+indexing -> manual : Read document
+manual --> indexing : 10 titled paragraphs
+indexing -> indexing : Parse chunks and hash document
+indexing -> index : Check saved manual hash and model
+index --> indexing : Current index, outdated index, or missing
+
+== 2. Generate vectors only if needed ==
+alt Manual and model unchanged
+  indexing --> developer : Reuse current index\nNo API request
+else New or changed manual / embedding model
+  indexing -> embedding : Batch of section titles + text
+  activate embedding
+  embedding --> indexing : One vector per chunk
+  deactivate embedding
+  indexing -> index : Atomically save text, vectors, IDs,\nmodel, dimensions and manual hash
+  indexing --> developer : Index ready for chat requests
+end
+deactivate indexing
+@enduml
