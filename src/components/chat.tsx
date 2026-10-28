@@ -190,6 +190,13 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
     }
   }
 
+  function resetChat() {
+    conversationRef.current?.style.removeProperty("--expansion-space");
+    setMessages([]);
+    setError(null);
+    setQuestion("");
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void sendQuestion(question);
@@ -207,7 +214,21 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
             <small>THE ROBOT MANUAL</small>
           </span>
         </a>
-        <div className="sidebar-body">
+        <div className="mobile-controls">
+          <button type="button" className="mobile-manual-button"
+            onClick={() => setManualOpen(!manualOpen)}
+            aria-expanded={manualOpen} aria-controls="manual-sections">
+            Manual <span aria-hidden="true">{manualOpen ? "−" : "+"}</span>
+          </button>
+          <ThemeToggle />
+          <button type="button" className="mobile-new-chat" onClick={resetChat}
+            disabled={pending || !messages.length} aria-label="New chat" title="New chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 7v5h-5M19 12a7 7 0 1 0-2 5M20 7l-1 5" />
+            </svg>
+          </button>
+        </div>
+        <div className={`sidebar-body ${manualOpen ? "is-open" : ""}`}>
           <div className="sidebar-eyebrow">YOUR WORKSPACE</div>
           <div className="active-nav">
             <span aria-hidden="true">↗</span> Manual chat{" "}
@@ -282,12 +303,7 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
             <button
               className="text-button"
               disabled={pending || !messages.length}
-              onClick={() => {
-                conversationRef.current?.style.removeProperty("--expansion-space");
-                setMessages([]);
-                setError(null);
-                setQuestion("");
-              }}
+              onClick={resetChat}
             >
               New chat <span aria-hidden="true">↺</span>
             </button>
@@ -456,7 +472,7 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
                 }
                 onChange={(event) => setQuestion(event.target.value)}
                 disabled={pending}
-                placeholder="Ask a question about your robot…"
+                placeholder="Ask about your robot…"
                 onKeyDown={(event) => {
                   if (
                     event.key === "Enter" &&
@@ -500,6 +516,7 @@ export function Chat({ sections }: { sections: ManualSection[] }) {
                 </div>
               </div>
             </form>
+            <p className="mobile-grounding-note">Answers from the manual · Check the sources below each answer.</p>
             <p className="footer-note">
               Built to learn. Grounded in the manual.{" "}
               <span>Classroom Rover · Manual chat</span>
